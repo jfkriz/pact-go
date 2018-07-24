@@ -226,6 +226,10 @@ func Match(src interface{}) Matcher {
 // match recursively traverses the provided type and outputs a
 // matcher string for it that is compatible with the Pact dsl.
 func match(srcType reflect.Type, params params) Matcher {
+	if params.ignore {
+		return nil
+	}
+
 	switch kind := srcType.Kind(); kind {
 	case reflect.Ptr:
 		return match(srcType.Elem(), params)
@@ -236,7 +240,10 @@ func match(srcType reflect.Type, params params) Matcher {
 
 		for i := 0; i < srcType.NumField(); i++ {
 			field := srcType.Field(i)
-			result[field.Tag.Get("json")] = match(field.Type, pluckParams(field.Type, field.Tag.Get("pact")))
+			fieldParams := pluckParams(field.Type, field.Tag.Get("pact"))
+			if !fieldParams.ignore {
+				result[field.Tag.Get("json")] = match(field.Type, fieldParams)
+			}
 		}
 		return result
 	case reflect.String:
@@ -263,8 +270,9 @@ func match(srcType reflect.Type, params params) Matcher {
 // struct fields. They are passed back into match() along with their
 // associated type to serve as parameters for the dsl functions.
 type params struct {
-	slice sliceParams
-	str   stringParams
+	slice  sliceParams
+	str    stringParams
+	ignore bool
 }
 
 type sliceParams struct {
@@ -292,6 +300,11 @@ func getDefaults() params {
 func pluckParams(srcType reflect.Type, pactTag string) params {
 	params := getDefaults()
 	if pactTag == "" {
+		return params
+	}
+
+	params.ignore = shouldIgnore(pactTag)
+	if params.ignore {
 		return params
 	}
 
@@ -328,6 +341,13 @@ func pluckParams(srcType reflect.Type, pactTag string) params {
 	}
 
 	return params
+}
+
+func shouldIgnore(pactTag string) bool {
+	ignoreRegex, _ := regexp.Compile("ignore=(true,false)")
+
+	ignoreMatch := ignoreRegex.FindAllStringSubmatch(pactTag, -1)
+	return len(ignoreMatch) > 0 && len(ignoreMatch[0]) > 1 && ignoreMatch[0][1] == "true"
 }
 
 func triggerInvalidPactTagPanic(tag string, err error) {
