@@ -344,7 +344,7 @@ func pluckParams(srcType reflect.Type, pactTag string) params {
 }
 
 func shouldIgnore(pactTag string) bool {
-	ignoreRegex, _ := regexp.Compile("ignore=(true,false)")
+	ignoreRegex, _ := regexp.Compile("ignore=(true|false)")
 
 	ignoreMatch := ignoreRegex.FindAllStringSubmatch(pactTag, -1)
 	return len(ignoreMatch) > 0 && len(ignoreMatch[0]) > 1 && ignoreMatch[0][1] == "true"

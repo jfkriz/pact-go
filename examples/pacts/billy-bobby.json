@@ -137,11 +137,180 @@
           }
         }
       }
+    },
+    {
+      "description": "A request to login with user 'billy' responds with fields matched using DSL",
+      "providerState": "User billy exists",
+      "request": {
+        "method": "POST",
+        "path": "/users/login/1",
+        "query": "foo=bar",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "password": "issilly",
+          "username": "Jean-Marie de La Beaujardière😀😍"
+        },
+        "matchingRules": {
+          "$.path": {
+            "match": "regex",
+            "regex": "\\/users\\/login\\/[0-9]+"
+          },
+          "$.query.foo[0]": {
+            "match": "regex",
+            "regex": "[a-zA-Z]+"
+          },
+          "$.headers.Content-Type": {
+            "match": "regex",
+            "regex": "application\\/json"
+          },
+          "$.body.password": {
+            "match": "type"
+          },
+          "$.body.username": {
+            "match": "type"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "X-Api-Correlation-Id": "100"
+        },
+        "body": {
+          "user": {
+            "address": {
+              "city": "Hill Valley",
+              "line1": "1640 Riverside Drive",
+              "postalcode": "95420-4345",
+              "state": "California"
+            },
+            "lastname": "foo fighter",
+            "name": "Jean-Marie de La Beaujardière😀😍"
+          }
+        },
+        "matchingRules": {
+          "$.headers.Content-Type": {
+            "match": "regex",
+            "regex": "application\\/json"
+          },
+          "$.headers.X-Api-Correlation-Id": {
+            "match": "type"
+          },
+          "$.body": {
+            "match": "type"
+          },
+          "$.body.user.address.city": {
+            "match": "type"
+          },
+          "$.body.user.address.line1": {
+            "match": "type"
+          },
+          "$.body.user.address.postalcode": {
+            "match": "type"
+          },
+          "$.body.user.address.state": {
+            "match": "type"
+          },
+          "$.body.user.lastname": {
+            "match": "type"
+          },
+          "$.body.user.name": {
+            "match": "type"
+          }
+        }
+      }
+    },
+    {
+      "description": "A request to login with user 'billy' responds with fields matched using recursive Match function",
+      "providerState": "User billy exists",
+      "request": {
+        "method": "POST",
+        "path": "/users/login/1",
+        "query": "foo=bar",
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "body": {
+          "password": "issilly",
+          "username": "Jean-Marie de La Beaujardière😀😍"
+        },
+        "matchingRules": {
+          "$.path": {
+            "match": "regex",
+            "regex": "\\/users\\/login\\/[0-9]+"
+          },
+          "$.query.foo[0]": {
+            "match": "regex",
+            "regex": "[a-zA-Z]+"
+          },
+          "$.headers.Content-Type": {
+            "match": "regex",
+            "regex": "application\\/json"
+          },
+          "$.body.password": {
+            "match": "type"
+          },
+          "$.body.username": {
+            "match": "type"
+          }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8",
+          "X-Api-Correlation-Id": "100"
+        },
+        "body": {
+          "": "\"string\"",
+          "address": {
+            "city": "\"string\"",
+            "line1": "\"string\"",
+            "postalcode": "\"string\"",
+            "state": "\"string\""
+          },
+          "lastname": "\"string\"",
+          "name": "\"string\""
+        },
+        "matchingRules": {
+          "$.headers.Content-Type": {
+            "match": "regex",
+            "regex": "application\\/json"
+          },
+          "$.headers.X-Api-Correlation-Id": {
+            "match": "type"
+          },
+          "$.body.": {
+            "match": "type"
+          },
+          "$.body.address.city": {
+            "match": "type"
+          },
+          "$.body.address.line1": {
+            "match": "type"
+          },
+          "$.body.address.postalcode": {
+            "match": "type"
+          },
+          "$.body.address.state": {
+            "match": "type"
+          },
+          "$.body.lastname": {
+            "match": "type"
+          },
+          "$.body.name": {
+            "match": "type"
+          }
+        }
+      }
     }
   ],
   "metadata": {
     "pactSpecification": {
-      "version": "2.0.0"
+      "version": "0.0.0"
     }
   }
 }

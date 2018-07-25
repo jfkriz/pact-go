@@ -27,6 +27,11 @@ var form url.Values
 var rr http.ResponseWriter
 var req *http.Request
 var name = "Jean-Marie de La Beaujardière😀😍"
+var lastname = "foo fighter"
+var addressLine1 = "1640 Riverside Drive"
+var city = "Hill Valley"
+var state = "California"
+var postalCode = "95420-4345"
 var password = "issilly"
 var like = dsl.Like
 var eachLike = dsl.EachLike
@@ -237,6 +242,114 @@ func TestPactConsumerLoginHandler_UserUnauthorised(t *testing.T) {
 		})
 
 	err := pact.Verify(testBillyUnauthorized)
+	if err != nil {
+		t.Fatalf("Error on Verify: %v", err)
+	}
+}
+
+func TestPactConsumerLoginHandler_UserWithIgnoredFieldsMatchUsingDsl(t *testing.T) {
+	var testUserMatchesUsingDsl = func() error {
+		client := Client{
+			Host: fmt.Sprintf("http://localhost:%d", pact.Server.Port),
+		}
+		client.loginHandler(rr, req)
+
+		// Expect User to be set on the Client
+		if client.user == nil {
+			return errors.New("Expected user not to be nil")
+		}
+
+		return nil
+	}
+
+	body :=
+		like(dsl.Matcher{
+			"user": dsl.Matcher{
+				"name":     like(name),
+				"lastname": like(lastname),
+				"address": dsl.Matcher{
+					"line1":      like(addressLine1),
+					"city":       like(city),
+					"state":      like(state),
+					"postalcode": like(postalCode),
+				},
+			},
+		})
+
+	// Pull from pact broker, used in e2e/integrated tests for pact-go release
+	// Setup interactions on the Mock Service. Note that you can have multiple
+	// interactions
+	pact.
+		AddInteraction().
+		Given("User billy exists").
+		UponReceiving("A request to login with user 'billy' responds with fields matched using DSL").
+		WithRequest(request{
+			Method: "POST",
+			Path:   term("/users/login/1", "/users/login/[0-9]+"),
+			Query: dsl.MapMatcher{
+				"foo": term("bar", "[a-zA-Z]+"),
+			},
+			Body:    dsl.Match(loginRequest),
+			Headers: commonHeaders,
+		}).
+		WillRespondWith(dsl.Response{
+			Status: 200,
+			Body:   body,
+			Headers: dsl.MapMatcher{
+				"X-Api-Correlation-Id": dsl.Like("100"),
+				"Content-Type":         term("application/json; charset=utf-8", `application\/json`),
+			},
+		})
+
+	err := pact.Verify(testUserMatchesUsingDsl)
+	if err != nil {
+		t.Fatalf("Error on Verify: %v", err)
+	}
+}
+
+func TestPactConsumerLoginHandler_UserWithIgnoredFieldsMatchUsingMatcher(t *testing.T) {
+	var testUserMatchesUsingDsl = func() error {
+		client := Client{
+			Host: fmt.Sprintf("http://localhost:%d", pact.Server.Port),
+		}
+		client.loginHandler(rr, req)
+
+		// Expect User to be set on the Client
+		if client.user == nil {
+			return errors.New("Expected user not to be nil")
+		}
+
+		return nil
+	}
+
+	body := dsl.Match(&User{})
+
+	// Pull from pact broker, used in e2e/integrated tests for pact-go release
+	// Setup interactions on the Mock Service. Note that you can have multiple
+	// interactions
+	pact.
+		AddInteraction().
+		Given("User billy exists").
+		UponReceiving("A request to login with user 'billy' responds with fields matched using recursive Match function").
+		WithRequest(request{
+			Method: "POST",
+			Path:   term("/users/login/1", "/users/login/[0-9]+"),
+			Query: dsl.MapMatcher{
+				"foo": term("bar", "[a-zA-Z]+"),
+			},
+			Body:    dsl.Match(loginRequest),
+			Headers: commonHeaders,
+		}).
+		WillRespondWith(dsl.Response{
+			Status: 200,
+			Body:   body,
+			Headers: dsl.MapMatcher{
+				"X-Api-Correlation-Id": dsl.Like("100"),
+				"Content-Type":         term("application/json; charset=utf-8", `application\/json`),
+			},
+		})
+
+	err := pact.Verify(testUserMatchesUsingDsl)
 	if err != nil {
 		t.Fatalf("Error on Verify: %v", err)
 	}

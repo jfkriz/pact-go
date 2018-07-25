@@ -11,9 +11,22 @@ import (
 
 // User is a representation of a User. Dah.
 type User struct {
-	Name     string `json:"name"`
-	username string
-	password string
+	Name           string `json:"name"`
+	username       string
+	password       string
+	MiddleName     string          `json:"middlename" pact:"ignore=true"`
+	LastName       string          `json:"lastname"`
+	MailingAddress *MailingAddress `json:"address"`
+}
+
+// MailingAddress is a representation of a physical mail delivery location for a User.
+type MailingAddress struct {
+	AddressLine1 string `json:"line1"`
+	AddressLine2 string `json:"line2" pact:"ignore=true"`
+	City         string `json:"city"`
+	State        string `json:"state"`
+	PostalCode   string `json:"postalcode"`
+	Country      string `json:"country" pact:"ignore=true"`
 }
 
 // Client is a UI for the User Service.
