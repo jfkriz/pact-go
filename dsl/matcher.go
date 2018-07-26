@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -295,59 +295,61 @@ func getDefaults() params {
 
 // pluckParams converts a 'pact' tag into a pactParams struct
 // Supported Tag Formats
-// Minimum Slice Size: `pact:"min=2"`
-// String RegEx:       `pact:"example=2000-01-01,regex=^\\d{4}-\\d{2}-\\d{2}$"`
+// Ignoring a Property: `pact:"ignore=true"`
+// Minimum Slice Size:  `pact:"min=2"`
+// String RegEx:        `pact:"example=2000-01-01,regex=^\\d{4}-\\d{2}-\\d{2}$"`
 func pluckParams(srcType reflect.Type, pactTag string) params {
 	params := getDefaults()
 	if pactTag == "" {
 		return params
 	}
 
-	params.ignore = shouldIgnore(pactTag)
-	if params.ignore {
-		return params
-	}
-
-	switch kind := srcType.Kind(); kind {
-	case reflect.Slice:
-		if _, err := fmt.Sscanf(pactTag, "min=%d", &params.slice.min); err != nil {
-			triggerInvalidPactTagPanic(pactTag, err)
+	kind := srcType.Kind()
+	for _, p := range strings.Split(pactTag, ",") {
+		kv := strings.Split(p, "=")
+		if len(kv) != 2 {
+			triggerInvalidPactTagPanic(pactTag, fmt.Errorf("invalid format: tag must be in the format 'key=value'"))
 		}
-	case reflect.String:
-		fullRegex, _ := regexp.Compile(`regex=(.*)$`)
-		exampleRegex, _ := regexp.Compile(`^example=(.*)`)
+		key := strings.TrimSpace(kv[0])
+		val := strings.TrimSpace(kv[1])
+		if len(val) == 0 {
+			triggerInvalidPactTagPanic(pactTag, fmt.Errorf("invalid format: %s must not be empty", key))
+		}
 
-		if fullRegex.Match([]byte(pactTag)) {
-			components := strings.Split(pactTag, ",regex=")
-
-			if len(components[1]) == 0 {
-				triggerInvalidPactTagPanic(pactTag, fmt.Errorf("invalid format: regex must not be empty"))
+		switch key {
+		case "example":
+			if kind != reflect.String {
+				triggerInvalidPactTagPanic(pactTag, fmt.Errorf("invalid tag: %s is not valid for a slice", key))
 			}
-
-			if _, err := fmt.Sscanf(components[0], "example=%s", &params.str.example); err != nil {
+			params.str.example = val
+		case "regex":
+			if kind != reflect.String {
+				triggerInvalidPactTagPanic(pactTag, fmt.Errorf("invalid tag: %s is not valid for a slice", key))
+			}
+			params.str.regEx = strings.Replace(val, `\`, `\\`, -1)
+		case "min":
+			if kind != reflect.Slice {
+				triggerInvalidPactTagPanic(pactTag, fmt.Errorf("invalid tag: %s is not valid for a string", key))
+			}
+			if _, err := fmt.Sscanf(val, "%d", &params.slice.min); err != nil {
 				triggerInvalidPactTagPanic(pactTag, err)
 			}
-			params.str.regEx = strings.Replace(components[1], `\`, `\\`, -1)
-
-		} else if exampleRegex.Match([]byte(pactTag)) {
-			components := strings.Split(pactTag, "example=")
-
-			if len(components) != 2 || strings.TrimSpace(components[1]) == "" {
-				triggerInvalidPactTagPanic(pactTag, fmt.Errorf("invalid format: example must not be empty"))
+		case "ignore":
+			if ignore, err := strconv.ParseBool(val); err != nil {
+				triggerInvalidPactTagPanic(pactTag, err)
+			} else {
+				params.ignore = ignore
 			}
-
-			params.str.example = components[1]
+		default:
+			triggerInvalidPactTagPanic(pactTag, fmt.Errorf("invalid tag: %s is not a recognized pact tag", key))
 		}
+	}
+
+	if kind == reflect.String && len(params.str.regEx) > 0 && len(params.str.example) == 0 {
+		triggerInvalidPactTagPanic(pactTag, fmt.Errorf("invalid format: example must not be empty"))
 	}
 
 	return params
-}
-
-func shouldIgnore(pactTag string) bool {
-	ignoreRegex, _ := regexp.Compile("ignore=(true|false)")
-
-	ignoreMatch := ignoreRegex.FindAllStringSubmatch(pactTag, -1)
-	return len(ignoreMatch) > 0 && len(ignoreMatch[0]) > 1 && ignoreMatch[0][1] == "true"
 }
 
 func triggerInvalidPactTagPanic(tag string, err error) {

@@ -536,6 +536,11 @@ func TestMatch(t *testing.T) {
 	type wordsDTO struct {
 		Words []string `json:"words" pact:"min=2"`
 	}
+	type personDTO struct {
+		FirstName  string `json:"firstname"`
+		MiddleName string `json:"middlename" pact:"ignore=true"`
+		LastName   string `json:"lastname" pact:"ignore=false"`
+	}
 	str := "str"
 	type args struct {
 		src interface{}
@@ -594,6 +599,68 @@ func TestMatch(t *testing.T) {
 			want: map[string]interface{}{
 				"words": EachLike(Like(`"string"`), 2),
 			},
+		},
+		{
+			name: "recursive case - struct with ignored tag on attributes",
+			args: args{
+				src: personDTO{},
+			},
+			want: map[string]interface{}{
+				"firstname": Like(`"string"`),
+				"lastname":  Like(`"string"`),
+			},
+		},
+		{
+			name: "recursive case - struct with slice with invalid string example tag",
+			args: args{
+				src: struct {
+					names []string `pact:"example=123"`
+				}{
+					names: []string{
+						"one",
+						"two",
+						"three",
+					},
+				},
+			},
+			wantPanic: true,
+		},
+		{
+			name: "recursive case - struct with slice with invalid string regex tag",
+			args: args{
+				src: struct {
+					names []string `pact:"regex=123"`
+				}{
+					names: []string{
+						"one",
+						"two",
+						"three",
+					},
+				},
+			},
+			wantPanic: true,
+		},
+		{
+			name: "recursive case - struct with string with invalid slice min tag",
+			args: args{
+				src: struct {
+					name string `pact:"min=123"`
+				}{
+					name: "one",
+				},
+			},
+			wantPanic: true,
+		},
+		{
+			name: "recursive case - struct with property with invalid ignore tag",
+			args: args{
+				src: struct {
+					name string `pact:"ignore=123"`
+				}{
+					name: "one",
+				},
+			},
+			wantPanic: true,
 		},
 		{
 			name: "base case - string",
